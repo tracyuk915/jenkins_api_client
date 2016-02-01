@@ -311,11 +311,18 @@ module JenkinsApi
           # If we got a redirect request, follow it (if flag set), but don't
           # go any deeper (only one redirect supported - don't want to follow
           # our tail)
+          redir_uri = URI.parse(response['location'])
           if follow_redirect
-            redir_uri = URI.parse(response['location'])
             response = make_http_request(
-              Net::HTTP::Get.new(redir_uri.path, false)
+                Net::HTTP::Get.new(redir_uri.path, false)
             )
+          else
+            # Update the gem to handle cookie expired case: re-generate the Hudson cookie and call the origianl http request again
+            if redir_uri.host.to_s.include? "login.oracle.com"
+              @cookies = GetCookie.set_hudson_cookie
+              p "+++New Hudson Cookies+++: #{@cookies}"
+              response = make_http_request(request)
+            end
           end
       end
 
